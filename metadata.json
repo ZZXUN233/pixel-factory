@@ -1,0 +1,6 @@
+{
+  "name": "像素工厂 (Pixel Factory)",
+  "description": "基于文本矩阵编码协议的 AI 像素图片生成器与可视化编辑器",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
