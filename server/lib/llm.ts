@@ -72,48 +72,58 @@ class GeminiProvider implements LLMProvider {
   }
 }
 
-// ─── DeepSeek Provider ───────────────────────────
+// ─── OpenAI-Compatible Provider (通用) ────────────
+// 适用于任何 OpenAI 兼容接口，如 OpenCode Go、DeepSeek 等
 
-const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1/chat/completions';
+class OpenAICompatibleProvider implements LLMProvider {
+  readonly name: string;
+  private baseUrl: string;
+  private apiKey: string;
+  private defaultModel: string;
 
-class DeepSeekProvider implements LLMProvider {
-  readonly name = 'deepseek';
+  constructor(name: string, baseUrl: string, apiKey: string, defaultModel: string) {
+    this.name = name;
+    this.baseUrl = baseUrl.replace(/\/+$/, '');
+    this.apiKey = apiKey;
+    this.defaultModel = defaultModel;
+  }
 
   async generateText(req: LLMRequest): Promise<string> {
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
-      throw new Error('DEEPSEEK_API_KEY is missing. Set it in .env or environment.');
+    if (!this.apiKey) {
+      throw new Error(`${this.name.toUpperCase()}_API_KEY is missing. Set it in .env`);
     }
 
-    const model = req.model || process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+    const model = req.model || this.defaultModel;
 
     const messages: Array<{ role: string; content: string }> = [
       { role: 'system', content: req.system },
       ...req.messages.map((m) => ({ role: m.role, content: m.content })),
     ];
 
-    const res = await fetch(DEEPSEEK_BASE_URL, {
+    const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({
         model,
         messages,
         response_format: { type: 'json_object' },
+        temperature: 1.3,
+        max_tokens: 8192,
       }),
     });
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
-      throw new Error(`DeepSeek API error (${res.status}): ${errBody}`);
+      throw new Error(`${this.name} API error (${res.status}): ${errBody}`);
     }
 
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content;
     if (!text) {
-      throw new Error('DeepSeek returned an empty response.');
+      throw new Error(`${this.name} returned an empty response.`);
     }
     return text;
   }
@@ -130,7 +140,20 @@ export function getLLMProvider(): LLMProvider {
 
   switch (providerName) {
     case 'deepseek':
-      cachedProvider = new DeepSeekProvider();
+      cachedProvider = new OpenAICompatibleProvider(
+        'deepseek',
+        'https://api.deepseek.com/v1',
+        process.env.DEEPSEEK_API_KEY || '',
+        process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+      );
+      break;
+    case 'opencode':
+      cachedProvider = new OpenAICompatibleProvider(
+        'opencode',
+        process.env.OPENCODE_BASE_URL || 'https://api.opencode.go/v1',
+        process.env.OPENCODE_API_KEY || '',
+        process.env.OPENCODE_MODEL || 'gemini-2.0-flash',
+      );
       break;
     case 'gemini':
     default:

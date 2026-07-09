@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, HelpCircle, Loader2 } from 'lucide-react';
+import { Sparkles, HelpCircle, Loader2, Copy, Check } from 'lucide-react';
 
 interface AIGeneratorProps {
   onGenerateSuccess: (result: {
@@ -39,6 +39,7 @@ const GRID_SIZES = [
 const PROVIDER_LABELS: Record<string, string> = {
   gemini: 'Gemini 3.5',
   deepseek: 'DeepSeek',
+  opencode: 'OpenCode',
 };
 
 export const AIGenerator: React.FC<AIGeneratorProps> = ({
@@ -53,6 +54,8 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   const [aiExplanation, setAiExplanation] = useState('');
+  const [fullPrompt, setFullPrompt] = useState('');
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [providerName, setProviderName] = useState('gemini');
 
   // Detect active provider from backend
@@ -115,6 +118,8 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
 
       const data = await response.json();
 
+      setFullPrompt(data.fullPrompt || '');
+
       onGenerateSuccess({
         name: data.name || 'AI 像素画',
         palette: data.palette,
@@ -153,7 +158,7 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
           id="ai-prompt-textarea"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="描述你想要的像素画（支持中文/英文），例如：&#10;"一个粉红色的复古心形，带白色高光和黑色阴影"&#10;"一个戴着红帽子的像素小马里奥"&#10;"一把散发绿色幽光的骷髅法杖""
+          placeholder={'描述你想要的像素画（支持中文/英文），例如：\n\u201C一个粉红色的复古心形，带白色高光和黑色阴影\u201D\n\u201C一个戴着红帽子的像素小马里奥\u201D\n\u201C一把散发绿色幽光的骷髅法杖\u201D'}
           className="w-full h-24 bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-xs focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 resize-none placeholder:text-slate-400 leading-relaxed"
           disabled={loading}
         />
@@ -258,7 +263,39 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
         </div>
       )}
 
-      {/* 7. Action Button */}
+      {/* 7. Full Prompt with Copy */}
+      {fullPrompt && !loading && (
+        <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-lg flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">完整提示词（可复制给其他 AI）</span>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(fullPrompt);
+                setCopiedPrompt(true);
+                setTimeout(() => setCopiedPrompt(false), 2000);
+              }}
+              className="text-xs flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-all cursor-pointer shadow-sm"
+            >
+              {copiedPrompt ? (
+                <>
+                  <Check className="h-3 w-3 text-emerald-600" />
+                  <span className="text-emerald-600 font-semibold">已复制</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>复制提示词</span>
+                </>
+              )}
+            </button>
+          </div>
+          <pre className="text-[10px] text-slate-600 leading-relaxed font-mono bg-white border border-slate-100 p-2.5 rounded-lg overflow-x-auto max-h-40 whitespace-pre-wrap">
+            {fullPrompt}
+          </pre>
+        </div>
+      )}
+
+      {/* 8. Action Button */}
       {!loading && (
         <button
           id="ai-generate-btn"
