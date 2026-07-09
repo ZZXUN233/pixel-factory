@@ -36,6 +36,11 @@ const GRID_SIZES = [
   { label: '64 × 64 (巨制)', width: 64, height: 64 },
 ];
 
+const PROVIDER_LABELS: Record<string, string> = {
+  gemini: 'Gemini 3.5',
+  deepseek: 'DeepSeek',
+};
+
 export const AIGenerator: React.FC<AIGeneratorProps> = ({
   onGenerateSuccess,
   currentSize,
@@ -48,6 +53,17 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
   const [loadingStep, setLoadingStep] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   const [aiExplanation, setAiExplanation] = useState('');
+  const [providerName, setProviderName] = useState('gemini');
+
+  // Detect active provider from backend
+  useEffect(() => {
+    fetch('/api/llm-provider')
+      .then(r => r.json())
+      .then(data => {
+        if (data.provider) setProviderName(data.provider);
+      })
+      .catch(() => {});
+  }, []);
 
   // Retro assembly simulation texts
   const LOADING_STEPS = [
@@ -71,7 +87,7 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      setErrorMessage('请输入图片描述，例如：“一把燃烧着火焰的魔法之剑”');
+      setErrorMessage('请输入图片描述，例如："一把燃烧着火焰的魔法之剑"');
       return;
     }
 
@@ -98,7 +114,7 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
       }
 
       const data = await response.json();
-      
+
       onGenerateSuccess({
         name: data.name || 'AI 像素画',
         palette: data.palette,
@@ -123,19 +139,21 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
       <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
         <Sparkles className="h-5 w-5 text-blue-600" />
         <h2 className="text-base font-bold text-slate-800">AI 像素生成引擎</h2>
+        <span className="ml-auto text-[10px] text-blue-600 lowercase font-mono">
+          Powered by {PROVIDER_LABELS[providerName] || providerName}
+        </span>
       </div>
 
       {/* 1. Prompt Input */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center justify-between">
           <span>灵感创意描述 (Prompt)</span>
-          <span className="text-[10px] text-blue-600 lowercase font-mono">Powered by Gemini 3.5</span>
         </label>
         <textarea
           id="ai-prompt-textarea"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="描述你想要的像素画（支持中文/英文），例如：&#10;“一个粉红色的复古心形，带白色高光和黑色阴影”&#10;“一个戴着红帽子的像素小马里奥”&#10;“一把散发绿色幽光的骷髅法杖”"
+          placeholder="描述你想要的像素画（支持中文/英文），例如：&#10;"一个粉红色的复古心形，带白色高光和黑色阴影"&#10;"一个戴着红帽子的像素小马里奥"&#10;"一把散发绿色幽光的骷髅法杖""
           className="w-full h-24 bg-slate-50 border border-slate-200 text-slate-800 p-3 rounded-xl text-xs focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 resize-none placeholder:text-slate-400 leading-relaxed"
           disabled={loading}
         />
@@ -219,7 +237,7 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({
           </div>
           {/* Animated Pixel-styled progress bar */}
           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-            <div 
+            <div
               className="h-full bg-blue-600 transition-all duration-1000 ease-out"
               style={{ width: `${((loadingStep + 1) / LOADING_STEPS.length) * 100}%` }}
             />

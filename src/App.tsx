@@ -6,24 +6,31 @@ import { ImportExport } from './components/ImportExport';
 import { ProjectGallery } from './components/ProjectGallery';
 import { ImagePixelator } from './components/ImagePixelator';
 import { AnimationStudio } from './components/AnimationStudio';
+import { CommunityGallery } from './components/CommunityGallery';
+import { AuthButton } from './components/AuthButton';
+import { useAuth } from './hooks/useAuth';
 import { ToolType } from './types';
 import { PRESET_TEMPLATES, decodeRLE } from './utils';
-import { 
-  Sparkles, 
-  Palette, 
-  Terminal, 
-  Layers, 
-  RotateCcw, 
-  RotateCw, 
-  Trash2, 
-  PaintBucket, 
-  Info, 
+import {
+  Sparkles,
+  Palette,
+  Terminal,
+  Layers,
+  RotateCcw,
+  RotateCw,
+  Trash2,
+  PaintBucket,
+  Info,
   MonitorPlay,
   Image as ImageIcon,
-  Film
+  Film,
+  Globe
 } from 'lucide-react';
 
 export default function App() {
+  // 0. Auth State
+  const { user, isLoading, isLoggedIn, login, logout } = useAuth();
+
   // 1. Core Editor State
   const [width, setWidth] = useState(16);
   const [height, setHeight] = useState(16);
@@ -254,10 +261,19 @@ export default function App() {
           </div>
         </div>
 
-        {/* Project info card */}
-        <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl text-xs">
-          <span className="text-slate-400 font-medium">当前作品:</span>
-          <span className="text-blue-600 font-bold font-mono">{projectName}</span>
+        {/* Project info card + Auth */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-4 py-2 rounded-xl text-xs">
+            <span className="text-slate-400 font-medium">当前作品:</span>
+            <span className="text-blue-600 font-bold font-mono">{projectName}</span>
+          </div>
+          <AuthButton
+            user={user}
+            isLoggedIn={isLoggedIn}
+            isLoading={isLoading}
+            onLogin={login}
+            onLogout={logout}
+          />
         </div>
       </header>
 
@@ -375,6 +391,7 @@ export default function App() {
               { id: 'editor', icon: Palette, label: '色板绘制' },
               { id: 'code', icon: Terminal, label: '导入导出' },
               { id: 'gallery', icon: Layers, label: '作品库' },
+              { id: 'community', icon: Globe, label: '广场' },
             ].map((tab) => {
               const IconComp = tab.icon;
               const isActive = activeTab === tab.id;
@@ -513,6 +530,15 @@ export default function App() {
                 onLoadProject={(loaded) => {
                   handleLoadProject(loaded);
                 }}
+                user={user}
+                isLoggedIn={isLoggedIn}
+              />
+            )}
+
+            {activeTab === 'community' && (
+              <CommunityGallery
+                user={user}
+                isLoggedIn={isLoggedIn}
               />
             )}
 

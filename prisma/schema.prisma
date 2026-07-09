@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// projects — 像素画项目表（用户 ID 使用 auth-center 全局 ID）
+// ============================================================
+model Project {
+  id           String  @id @default(cuid()) @db.VarChar(32)
+  authCenterId String  @map("auth_center_id") @db.VarChar(32)
+  name         String  @db.VarChar(128)
+  width        Int
+  height       Int
+  palette      String  @db.Text          // JSON array of hex color strings
+  rle          String  @db.Text          // RLE string
+  category     String? @db.VarChar(64)
+  description  String? @db.Text
+  isPublic     Boolean @default(false) @map("is_public")
+  avgScore     Float?  @default(0) @map("avg_score")
+  reviewCount  Int     @default(0) @map("review_count")
+  createdAt    BigInt  @map("created_at")
+  updatedAt    BigInt  @map("updated_at")
+
+  frames    AnimationFrame[]
+  reviews   ProjectReview[]
+  favorites ProjectFavorite[]
+
+  @@index([authCenterId])
+  @@map("projects")
+}
+
+// ============================================================
+// animation_frames — 项目动画帧表
+// ============================================================
+model AnimationFrame {
+  id         String @id @default(cuid()) @db.VarChar(32)
+  projectId  String @map("project_id") @db.VarChar(32)
+  frameIndex Int    @map("frame_index")
+  rle        String @db.Text            // Per-row RLE (JSON string array)
+  createdAt  BigInt @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, frameIndex])
+  @@map("animation_frames")
+}
+
+// ============================================================
+// users_cache — 用户信息缓存（从 auth-center 同步）
+// ============================================================
+model UserCache {
+  authCenterId  String @id @map("auth_center_id") @db.VarChar(32)
+  nickname      String? @db.VarChar(64)
+  avatarUrl     String? @map("avatar_url") @db.VarChar(512)
+  lastSyncedAt  BigInt  @map("last_synced_at")
+
+  @@map("users_cache")
+}
+
+// ============================================================
+// project_reviews — 作品评价与评论
+// ============================================================
+model ProjectReview {
+  id           String @id @default(cuid()) @db.VarChar(32)
+  projectId    String @map("project_id") @db.VarChar(32)
+  authCenterId String @map("auth_center_id") @db.VarChar(32)
+  type         String @db.VarChar(8)     // "review" | "comment"
+  content      String @db.Text
+  score        Int?                        // 1-10 (0-5星 × 2)，仅 review 有
+  status       String @default("active") @db.VarChar(16) // active / deleted
+  createdAt    BigInt @map("created_at")
+  updatedAt    BigInt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, type, status])
+  @@map("project_reviews")
+}
+
+// ============================================================
+// project_favorites — 作品收藏
+// ============================================================
+model ProjectFavorite {
+  id           String @id @default(cuid()) @db.VarChar(32)
+  projectId    String @map("project_id") @db.VarChar(32)
+  authCenterId String @map("auth_center_id") @db.VarChar(32)
+  createdAt    BigInt @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, authCenterId])
+  @@map("project_favorites")
+}
